@@ -1,5 +1,4 @@
-from stage import Stage
-from pipeline import Pipeline
+from pipeline import *
 import time
 
 class DoubleStage(Stage):

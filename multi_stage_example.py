@@ -1,6 +1,4 @@
-from multi_stage import MultiStage
-from stage import Stage
-from pipeline import Pipeline
+from pipeline import *
 import time
 
 class PassStage(MultiStage):

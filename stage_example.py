@@ -1,4 +1,4 @@
-from stage import Stage
+from pipeline import *
 
 class PrintStage(Stage):
     def process(self, packet):
