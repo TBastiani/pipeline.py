@@ -3,26 +3,27 @@ import sys
 import traceback
 
 class Stage:
-    def __init__(self, name, size):
+    def __init__(self, name, size, optional_arg=None):
         self.name = name
 
         if size <= 0:
             raise 'Size needs to be strictly positive'
         self.queue = mp.Queue(size)
         self.oqueue = None
+        self.optional_arg = optional_arg
 
     def start__(self):
         sys.stdout.write('Starting stage "{}"...\n'.format(self.name))
         self.thread = mp.Process(
                 target=Stage.process__,
-                args=(self, self.name, self.queue, self.oqueue))
+                args=(self, self.name, self.queue, self.oqueue, self.optional_arg))
         self.thread.start()
 
     def stop__(self):
         sys.stdout.write('Stopping stage "{}"...\n'.format(self.name))
         self.thread.join()
 
-    def start(self):
+    def start(self, optional=None):
         return True
 
     def stop(self):
@@ -36,13 +37,13 @@ class Stage:
             return
         self.oqueue.put(packet)
 
-    def process__(self, name, iqueue, oqueue):
+    def process__(self, name, iqueue, oqueue, optional_arg):
         self.name = name
         self.queue = iqueue
         self.oqueue = oqueue
 
         # Initialise stage
-        if not self.start():
+        if not self.start(optional_arg):
             sys.stderr.write('Failed to start "{}" stage\n'.format(self.name))
             return
 
@@ -71,8 +72,8 @@ class Stage:
 
 
 class MultiStage(Stage):
-    def __init__(self, name, size, threadcount):
-        super().__init__(name, size)
+    def __init__(self, name, size, threadcount, optional_arg=None):
+        super().__init__(name, size, optional_arg)
 
         self.iqueues = []
         self.oqueues = []
@@ -89,7 +90,7 @@ class MultiStage(Stage):
             self.threads.append(
                     mp.Process(
                         target=Stage.process__,
-                        args=(self, '{} - {}'.format(self.name, i), self.iqueues[i], self.oqueues[i])))
+                        args=(self, '{} - {}'.format(self.name, i), self.iqueues[i], self.oqueues[i], self.optional_arg)))
             self.threads[i].start()
 
         # Start dispatcher and reducer thread
