@@ -78,6 +78,7 @@ class MultiStage(Stage):
         self.iqueues = []
         self.oqueues = []
         self.threadcount = threadcount
+        self.size = size
 
     def start__(self):
         sys.stdout.write('Starting stage "{}"...\n'.format(self.name))
@@ -85,8 +86,8 @@ class MultiStage(Stage):
         # Start N worker threads
         self.threads = []
         for i in range(self.threadcount):
-            self.iqueues.append(mp.Queue(self.queue.qsize()))
-            self.oqueues.append(mp.Queue(self.queue.qsize()))
+            self.iqueues.append(mp.Queue(self.size))
+            self.oqueues.append(mp.Queue(self.size))
             self.threads.append(
                     mp.Process(
                         target=Stage.process__,
@@ -127,7 +128,8 @@ class MultiStage(Stage):
                 if packet is None:
                     stop = True
                     for i in range(self.threadcount):
-                        self.oqueues[i].put(None)
+                        self.oqueues[counter].put(None)
+                        counter = (counter + 1) % self.threadcount
                     continue
 
                 # Round robin packet dispatch
@@ -146,13 +148,17 @@ class MultiStage(Stage):
         try:
             counter = 0
             stop = False
+            noneCount = 0
             while not stop:
                 # Read packet from current queue
                 packet = self.queues[counter].get()
                 if packet is None:
-                    stop = True
-                    if not self.oqueue is None:
-                        self.oqueue.put(None)
+                    noneCount += 1
+                    counter = (counter + 1) % self.threadcount
+                    if noneCount == self.threadcount:
+                        stop = True
+                        if not self.oqueue is None:
+                            self.oqueue.put(None)
                     continue
 
                 # Pass packet forward
